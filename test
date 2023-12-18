@@ -1,0 +1,57 @@
+const fs = require('fs');
+
+// Read the heartrate.json file
+fs.readFile('heartrate.json', 'utf8', (err, data) => {
+  if (err) {
+    console.error('Error reading file:', err);
+    return;
+  }
+
+  // Parse JSON data
+  const heartRateData = JSON.parse(data);
+
+  // Process data and calculate statistics for each day
+  const processedData = {};
+
+  heartRateData.forEach(entry => {
+    const date = entry.timestamp.split('T')[0]; // Extract date
+    if (!processedData[date]) {
+      processedData[date] = {
+        min: entry.bpm,
+        max: entry.bpm,
+        median: [entry.bpm],
+        latestTimestamp: entry.timestamp,
+      };
+    } else {
+      // Update min, max, median, and latest timestamp
+      processedData[date].min = Math.min(processedData[date].min, entry.bpm);
+      processedData[date].max = Math.max(processedData[date].max, entry.bpm);
+      processedData[date].median.push(entry.bpm);
+      processedData[date].median.sort((a, b) => a - b);
+      const middle = Math.floor(processedData[date].median.length / 2);
+      processedData[date].median =
+        processedData[date].median.length % 2 !== 0
+          ? processedData[date].median[middle]
+          : (processedData[date].median[middle - 1] + processedData[date].median[middle]) / 2;
+      processedData[date].latestTimestamp = entry.timestamp;
+    }
+  });
+
+  // Format output
+  const output = Object.keys(processedData).map(date => ({
+    date,
+    min: processedData[date].min,
+    max: processedData[date].max,
+    median: processedData[date].median,
+    latestTimestamp: processedData[date].latestTimestamp,
+  }));
+
+  // Write to output.json
+  fs.writeFile('output.json', JSON.stringify(output, null, 2), err => {
+    if (err) {
+      console.error('Error writing to file:', err);
+      return;
+    }
+    console.log('Output written to output.json successfully!');
+  });
+});
